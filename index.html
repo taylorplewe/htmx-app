@@ -2,8 +2,17 @@
 <html>
 	<head>
 		<title>Taylor's htmx app</title>
+		<link rel="stylesheet" href="styles.css">
+		<script src="https://unpkg.com/htmx.org@2.0.4"></script>
 	</head>
 	<body>
-		<h1>dude</h1>
+		<main>
+			<button
+				hx-post="/htmx-test"
+				hx-swap="outerHTML"
+			>
+				Enter
+			</button>
+		</main>
 	</body>
 </html>

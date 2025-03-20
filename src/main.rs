@@ -7,14 +7,25 @@ use std::{
 };
 use request::Request;
 
-fn main() {
-    println!("were starting dude were starting");
+static HTMX_TEST: &str = r#"
+    <article>
+        <h2>htmx town</h2>
+        <p><code>htmx</code> has just changed the content of the DOM</p>
+        <ul>
+            <li>Item one</li>
+            <li>Item two</li>
+            <li>Item three</li>
+        </ul>
+    </article>
+"#;
 
-    let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+fn main() {
+    let listening_url = "127.0.0.1:7878";
+    let listener = TcpListener::bind(listening_url).unwrap();
+    println!("Listening on {listening_url}");
 
     for stream in listener.incoming() {
         let stream = stream.unwrap();
-        println!("were up dude were up");
         handle_connection(stream);
     }
 }
@@ -26,16 +37,25 @@ fn handle_connection(mut stream: TcpStream) {
     let req = Request::new(&request_line);
 
     match req.path.as_str() {
-        "/" => serve_file(stream, "index.html"),
-        _ => serve_file(stream, "404.html"),
+        "/" => serve_text(stream, fs::read_to_string("index.html").unwrap()),
+        "/htmx-test" => serve_text(stream, String::from(HTMX_TEST)),
+        _ => {
+            let path = &req.path[1..];
+            serve_text(
+                stream,
+                if let Ok(content) = fs::read_to_string(path) {
+                    content
+                } else {
+                    fs::read_to_string("404.html").unwrap()
+                }
+            );
+        }
     }
 }
 
-fn serve_file(mut stream: TcpStream, file_path: &str) {
+fn serve_text(mut stream: TcpStream, text: String) {
     let status_line = "HTTP/1.1 200 OK";
-    let contents = fs::read_to_string(file_path).unwrap();
-    let length = contents.len();
-
-    let response = format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}");
+    let length = text.len();
+    let response = format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{text}");
     stream.write_all(response.as_bytes()).unwrap();
 }

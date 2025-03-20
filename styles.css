@@ -1,0 +1,76 @@
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+
+:root {
+    --col-dark-bg: #202020;
+    --col-dark-text: #c0c0c0;
+
+    --col-light-bg: white;
+    --col-light-text: #202020;
+
+    --border-opacity: .5;
+    --button-idle-opacity: .1;
+    --button-hover-opacity: .5;
+
+    background-color: var(--col-dark-bg);
+    color: var(--col-dark-text);
+    font-family: "Be Vietnam Pro", sans-serif;
+}
+
+* {
+    margin: 0;
+}
+
+body {
+    display: flex;
+    margin: 0;
+    place-items: center;
+    min-height: 100vh;
+    overflow: hidden;
+}
+
+main {
+    margin: 0 auto;
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid rgba(255, 255, 255, var(--border-opacity));
+}
+
+button {
+    background-color: rgba(255, 255, 255, var(--button-idle-opacity));
+    color: inherit;
+    &:hover {
+        background-color: rgba(255, 255, 255, var(--button-hover-opacity));
+    }
+    transition: background-color .2s ease;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-family: inherit;
+}
+
+article {
+    & > * {
+        margin-bottom: 16px;
+        &:last-of-type {
+            margin-bottom: 0;
+        }
+    }
+}
+
+@media (prefers-color-scheme: light) {
+    :root {
+        background-color: var(--col-light-bg);
+        color: var(--col-light-text);
+    }
+
+    main {
+        border-color: rgba(0, 0, 0, var(--border-opacity));
+    }
+
+    button {
+        background-color: rgba(0, 0, 0, var(--button-idle-opacity));
+        &:hover {
+            background-color: rgba(255, 255, 255, var(--button-hover-opacity));
+        }
+    }
+}
