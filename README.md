@@ -1,2 +1,2 @@
 # htmx-app
-Learning HTMX
+Learning [htmx](https://htmx.org/)
