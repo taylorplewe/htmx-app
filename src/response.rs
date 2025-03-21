@@ -1,18 +1,17 @@
+use std::collections::HashMap;
 use std::io::Write;
 use std::net::TcpStream;
 
 pub struct Response {
     pub status_code: u16,
-    pub status_msg: String,
     pub headers: Vec<(String, String)>,
     pub body: Vec<u8>,
 }
 
 impl Response {
-    pub fn new(status_code: u16, status_msg: String, headers: Vec<(String, String)>, body: Vec<u8>) -> Self {
+    pub fn new(status_code: u16, headers: Vec<(String, String)>, body: Vec<u8>) -> Self {
         Self {
             status_code,
-            status_msg,
             headers,
             body,
         }
@@ -23,11 +22,18 @@ impl Response {
             .map(|header| format!("{}: {}", header.0, header.1))
             .collect::<Vec<String>>()
             .join("\r\n");
-        let metadata_text = format!("HTTP/1.1 {} {}\r\n{}\r\n\r\n", self.status_code, self.status_msg, headers_text);
+        let metadata_text = format!("{}\r\n{}\r\n\r\n", self.get_status_text(), headers_text);
         let mut full_response_bytes = Vec::with_capacity(metadata_text.len() + headers_text.len());
         full_response_bytes.extend_from_slice(&metadata_text.as_bytes());
         full_response_bytes.extend_from_slice(&self.body);
         full_response_bytes
+    }
+    fn get_status_text(&self) -> String {
+        const H: &str = "HTTP/1.1";
+        match self.status_code {
+            200 => format!("{H} 200 OK"),
+            _ => format!("{H} 404 NOT FOUND"),
+        }
     }
 }
 
