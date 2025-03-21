@@ -9,13 +9,15 @@ use std::{
         TcpStream,
     }
 };
+use std::io::Lines;
+use std::net::Shutdown;
 use crate::{
     city::City,
     request::Request,
     response::{Response, SendResponse}
 };
 
-static ENTER_HTML: &str = r"
+static ENTER_HTML: &str = r#"
     <article>
         <h1>htmx town</h1>
         <p><code>htmx</code> has just changed the content of the DOM</p>
@@ -24,8 +26,9 @@ static ENTER_HTML: &str = r"
             <li>Item two</li>
             <li>Item three</li>
         </ul>
+        <button hx-post="/cities/add" hx-vals='{"name": "Laramie", "state": "WY"}'>Add city</button>
     </article>
-";
+"#;
 
 pub struct Server {
     pub cities: Vec<City>,
@@ -47,22 +50,27 @@ impl Server {
     }
 
     fn handle_connection(&self, mut stream: TcpStream) {
-        let buf_reader = BufReader::new(&stream);
+        let req = Request::new(&stream);
+        if req.is_none() { return; }
+        let req = req.unwrap();
 
-        let request_line = buf_reader.lines().next().unwrap().unwrap();
+        println!("method: {}, path: {}", req.method, req.path);
+        println!("headers:");
+        req.headers.iter().for_each(|header| {
+            println!("{} - {}", header.0, header.1);
+        });
 
-        println!("request: {request_line}");
-
-        let req = Request::new(&request_line);
+        println!("body: {}", req.body);
 
         match req.path.as_str() {
             "/" => self.serve_file(stream, "index.html"),
             "/enter" => self.serve_html(stream, String::from(ENTER_HTML)),
+            "/cities/add" => self.add_city(stream),
             _ => {
                 let path = &req.path[1..];
                 self.serve_file(
                     stream,
-                    if let Ok(content) = fs::exists(path) {
+                    if let Ok(exists) = fs::exists(path) {
                         path
                     } else {
                         "404.html"
@@ -72,7 +80,7 @@ impl Server {
         }
     }
 
-    fn serve_file(&self, stream: TcpStream, file_path: &str) {
+    fn serve_file(&self, mut stream: TcpStream, file_path: &str) {
         let mime = mime_guess::from_path(file_path).first();
         if mime.is_none() {
             eprintln!("could not get the MIME type for the file at {file_path}");
@@ -90,14 +98,11 @@ impl Server {
     }
 
     fn serve_html(&self, mut stream: TcpStream, html: String) {
-        stream.send_res(Response {
-            status_code: 200,
-            headers: vec![
-                (String::from("Content-Length"), format!("{}", html.len())),
-                (String::from("Content-Type"), String::from("text/html"))
-            ],
-            body: html.as_bytes().to_vec(),
-        });
+        self.serve_bytes(
+            stream,
+            mime_guess::mime::TEXT_HTML,
+            html.as_bytes()
+        );
     }
 
     fn serve_bytes(
@@ -114,5 +119,11 @@ impl Server {
             ],
             body: Vec::from(bytes)
         });
+        stream.flush().unwrap();
+        stream.shutdown(Shutdown::Write).unwrap();
+    }
+
+    fn add_city(&self, stream: TcpStream) {
+        println!("ADD CITY???? dude");
     }
 }
