@@ -26,7 +26,7 @@ pub struct Server {
 
 impl Server {
     pub fn new() -> Self {
-        Self { cities: vec![] }
+        Self { cities: HashMap::new(), current_city_id: 1 }
     }
     pub fn serve(&self) {
         let listening_url = "127.0.0.1:7878";
@@ -123,16 +123,20 @@ impl Server {
 
         // if the sister city already has its own sister city, break that connection
         let sister_city_id = u32::from_str(req.params.get("sister_city_id").unwrap()).expect("sister_city_id must be a number");
-        let sister_city = self.cities.get(&sister_city_id).expect("no sister city found with that id");
+        let mut sister_city = self.cities.get_mut(&sister_city_id).expect("no sister city found with that id");
         if let Some(third_city_id) = &sister_city.sister_city_id {
-            self.cities.get(third_city_id).unwrap().sister_city_id = None;
+            let mut third_city = self.cities.get_mut(third_city_id).expect("no third city found with that id");
+            third_city.sister_city_id = None;
         }
+        sister_city.sister_city_id = Some(self.current_city_id);
 
         self.cities.insert(self.current_city_id, City {
             id: self.current_city_id,
-            name: req.params.get("name")
+            name: req.params.get("name").unwrap().into(),
+            state: req.params.get("state").unwrap().into(),
+            country: req.params.get("country").unwrap().into(),
+            sister_city_id: Some(sister_city_id),
         });
-        self.cities.get(req.params.get("sister_city_id"))
         self.current_city_id += 1;
     }
 }
