@@ -37,16 +37,14 @@ impl Server {
     }
 
     fn handle_connection(&self, mut stream: TcpStream) {
-        let req = Request::new(&stream);
+        let req = Request::from_stream(&stream);
         if req.is_none() { return; }
         let req = req.unwrap();
-
-        println!("method: {}", req.method);
 
         match req.method.as_str() {
             "GET" => match req.path.as_str() {
                 "/" => self.serve_file(stream, "index.html"),
-                "/enter" => self.serve_files(stream, &["src/html/main-card.html", "src/html/new-city-dialog.html"]),
+                "/enter" => self.serve_files_combined(stream, &["src/html/main-card.html", "src/html/new-city-dialog.html"]),
                 _ => {
                     let path = &req.path[1..];
                     self.serve_file(
@@ -71,7 +69,7 @@ impl Server {
 
     }
 
-    fn serve_files(&self, mut stream: TcpStream, file_paths: &[&str]) {
+    fn serve_files_combined(&self, mut stream: TcpStream, file_paths: &[&str]) {
         let full_text = file_paths
             .iter()
             .map(|p| fs::read_to_string(p).unwrap_or("".to_string()))

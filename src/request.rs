@@ -10,39 +10,40 @@ pub struct Request {
     pub params: HashMap<String, String>,
 }
 impl Request {
-    pub fn new(mut stream: &TcpStream) -> Option<Self> {
+    pub fn from_stream(mut stream: &TcpStream) -> Option<Self> {
         let mut buf: [u8; u16::MAX as usize] = [0; u16::MAX as usize];
         let _num_bytes_peeked = stream.peek(&mut buf).expect("Could not peek the request buffer");
         let req_text = String::from_utf8(buf.to_vec()).expect("Could not convert utf8 block to String");
 
-        let mut lines = req_text.lines();
-        let req_info = lines.next().unwrap_or("");
-        if req_info.is_empty() { return None; }
-        let mut req_info_split = req_info.split(' ');
-        let method = req_info_split.next().unwrap_or("").to_string();
-        let path = req_info_split.next().unwrap_or("").to_string();
-        if method.is_empty() || path.is_empty() { return None; }
+        let mut req_text_lines = req_text.lines();
+        let mut req_info_split = req_text_lines.next()?.split(' ');
+        let method = req_info_split.next()?.to_string();
+        let path = req_info_split.next()?.to_string();
 
-        let headers: HashMap<String, String> = lines
+        // "Content-Length: 5356\nContent-Type: image/png" -> { "Content-Length": "5356", "Content-Type": "image/png" }
+        let headers: HashMap<String, String> = req_text_lines
             .filter_map(|line| {
-                let mut key_val_str = line.splitn(2, ": ");
-                Some((key_val_str.next()?.trim().to_string(), key_val_str.next()?.trim().to_string()))
+                line
+                    .split_once(": ")
+                    .map(|(k, v)| (k.to_string(), v.to_string()))
             })
             .collect();
 
         let body = req_text.split("\r\n\r\n").nth(1).unwrap_or("").to_string();
 
+        // "name=Denver&state=CO" -> { "name": "Denver", "state": "CO" }
         let params: HashMap<String, String> = body
             .split('&')
             .filter_map(|param| {
-                let mut key_value_str = param.splitn(2, '=');
-                Some((key_value_str.next()?.trim().to_string(), key_value_str.next()?.trim().to_string()))
+                param
+                    .split_once('=')
+                    .map(|(k, v)| (k.to_string(), v.to_string()))
             })
             .collect();
 
         Some(Self {
-            method,
-            path,
+            method: method.to_string(),
+            path: path.to_string(),
             headers,
             body,
             params,
