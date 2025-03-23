@@ -9,13 +9,6 @@ pub struct Response {
 }
 
 impl Response {
-    pub fn new(status_code: u16, headers: Vec<(String, String)>, body: Vec<u8>) -> Self {
-        Self {
-            status_code,
-            headers,
-            body,
-        }
-    }
     pub fn to_bytes(&self) -> Vec<u8> {
         let headers_text = self.headers
             .iter()

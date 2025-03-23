@@ -1,16 +1,18 @@
+use mime_guess;
+
 use std::{
     fs,
     io::{
         prelude::*,
-        BufReader,
     },
     net::{
         TcpListener,
         TcpStream,
-    }
+        Shutdown,
+    },
+    collections::HashMap,
+    str::FromStr,
 };
-use std::io::Lines;
-use std::net::Shutdown;
 use crate::{
     city::City,
     request::Request,
@@ -18,7 +20,8 @@ use crate::{
 };
 
 pub struct Server {
-    pub cities: Vec<City>,
+    pub cities: HashMap<u32, City>,
+    current_city_id: u32,
 }
 
 impl Server {
@@ -37,9 +40,7 @@ impl Server {
     }
 
     fn handle_connection(&self, mut stream: TcpStream) {
-        let req = Request::from_stream(&stream);
-        if req.is_none() { return; }
-        let req = req.unwrap();
+        let req = if let Some(req) = Request::from_stream(&stream) { req } else { return; };
 
         match req.method.as_str() {
             "GET" => match req.path.as_str() {
@@ -113,7 +114,25 @@ impl Server {
         stream.shutdown(Shutdown::Write).unwrap();
     }
 
-    fn add_city(&self, stream: TcpStream) {
-        println!("ADD CITY???? dude");
+    fn add_city(&mut self, req: Request) {
+        // verify the request contains all the necessary fields
+        if !["name", "state", "country", "sister_city_id"].iter().all(|key| req.params.contains_key(key)) {
+            eprintln!("Request does not contain all the keys necessary for a city");
+            return;
+        }
+
+        // if the sister city already has its own sister city, break that connection
+        let sister_city_id = u32::from_str(req.params.get("sister_city_id").unwrap()).expect("sister_city_id must be a number");
+        let sister_city = self.cities.get(&sister_city_id).expect("no sister city found with that id");
+        if let Some(third_city_id) = &sister_city.sister_city_id {
+            self.cities.get(third_city_id).unwrap().sister_city_id = None;
+        }
+
+        self.cities.insert(self.current_city_id, City {
+            id: self.current_city_id,
+            name: req.params.get("name")
+        });
+        self.cities.get(req.params.get("sister_city_id"))
+        self.current_city_id += 1;
     }
 }
