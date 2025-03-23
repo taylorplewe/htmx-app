@@ -1,0 +1,12 @@
+<dialog popover id="new-city-dialog">
+  <h2>Add a city</h2>
+  <form hx-post="/cities/add">
+    <label for="city-name">Name</label>
+    <input id="city-name" name="name" type="text">
+
+    <label for="city-state">State</label>
+    <input id="city-state" name="state" type="text" maxlength="2" pattern="[A-Z]{2}">
+
+    <button type="submit">Add</button>
+  </form>
+</dialog>

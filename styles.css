@@ -2,16 +2,19 @@
 
 :root {
     --col-dark-bg: #202020;
+    --col-dark-input-bg: #303030;
+    --col-dark-input-hover-bg: #404040;
     --col-dark-text: #c0c0c0;
+    --col-dark-input-text: #e0e0e0;
 
     --col-light-bg: white;
+    --col-light-input-bg: #c0c0c0;
+    --col-light-input-hover-bg: #d0d0d0;
     --col-light-text: #202020;
 
     --col-code: #5b96d5;
 
     --border-opacity: .2;
-    --button-idle-opacity: .1;
-    --button-hover-opacity: .2;
 
     background-color: var(--col-dark-bg);
     color: var(--col-dark-text);
@@ -20,6 +23,15 @@
 
 * {
     margin: 0;
+}
+
+[popover] {
+    background-color: var(--col-dark-bg);
+    color: var(--col-dark-text);
+    margin: revert;
+    &::backdrop {
+        background-color: rgba(0, 0, 0, .4);
+    }
 }
 
 body {
@@ -34,21 +46,24 @@ main {
     margin: 0 auto;
 }
 
-button {
-    background-color: rgba(255, 255, 255, var(--button-idle-opacity));
-    color: inherit;
-    &:hover {
-        background-color: rgba(255, 255, 255, var(--button-hover-opacity));
-    }
-    transition: background-color .2s ease;
+button, input {
+    background-color: var(--col-dark-input-bg);
+    color: var(--col-dark-input-text);
     border: none;
     padding: 8px 12px;
     border-radius: 4px;
     font-family: inherit;
+}
+
+button {
+    &:hover {
+        background-color: var(--col-dark-input-hover-bg);
+    }
+    transition: background-color .2s ease;
     cursor: pointer;
 }
 
-article {
+article, dialog {
     border-radius: 16px;
     padding: 32px;
     border: 1px solid rgba(255, 255, 255, var(--border-opacity));
@@ -60,9 +75,33 @@ article {
     }
 }
 
+dialog {
+    opacity: 1.0;
+    transition: opacity 0.3s ease;
+}
+
 code {
     font-size: 14pt;
     color: var(--col-code);
+}
+
+input {
+    border: none;
+
+}
+
+form {
+    input {
+        display: block;
+        margin-bottom: 16px;
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
+    button {
+        display: block;
+        margin-left: auto;
+    }
 }
 
 @media (prefers-color-scheme: light) {
@@ -76,9 +115,16 @@ code {
     }
 
     button {
-        background-color: rgba(0, 0, 0, var(--button-idle-opacity));
+        background-color: var(--col-light-input-bg);
+        color: var(--col-light-text);
         &:hover {
-            background-color: rgba(255, 255, 255, var(--button-hover-opacity));
+            background-color: var(--col-light-input-hover-bg);
         }
+    }
+}
+
+@starting-style {
+    dialog {
+        opacity: 0;
     }
 }

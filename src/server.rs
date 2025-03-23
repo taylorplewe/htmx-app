@@ -17,19 +17,6 @@ use crate::{
     response::{Response, SendResponse}
 };
 
-static ENTER_HTML: &str = r#"
-    <article>
-        <h1>htmx town</h1>
-        <p><code>htmx</code> has just changed the content of the DOM</p>
-        <ul>
-            <li>Item one</li>
-            <li>Item two</li>
-            <li>Item three</li>
-        </ul>
-        <button hx-post="/cities/add" hx-vals='{"name": "Laramie", "state": "WY"}'>Add city</button>
-    </article>
-"#;
-
 pub struct Server {
     pub cities: Vec<City>,
 }
@@ -54,30 +41,43 @@ impl Server {
         if req.is_none() { return; }
         let req = req.unwrap();
 
-        println!("method: {}, path: {}", req.method, req.path);
-        println!("headers:");
-        req.headers.iter().for_each(|header| {
-            println!("{} - {}", header.0, header.1);
-        });
+        println!("method: {}", req.method);
 
-        println!("body: {}", req.body);
-
-        match req.path.as_str() {
-            "/" => self.serve_file(stream, "index.html"),
-            "/enter" => self.serve_html(stream, String::from(ENTER_HTML)),
-            "/cities/add" => self.add_city(stream),
-            _ => {
-                let path = &req.path[1..];
-                self.serve_file(
-                    stream,
-                    if let Ok(exists) = fs::exists(path) {
-                        path
-                    } else {
-                        "404.html"
-                    }
-                );
+        match req.method.as_str() {
+            "GET" => match req.path.as_str() {
+                "/" => self.serve_file(stream, "index.html"),
+                "/enter" => self.serve_files(stream, &["src/html/main-card.html", "src/html/new-city-dialog.html"]),
+                _ => {
+                    let path = &req.path[1..];
+                    self.serve_file(
+                        stream,
+                        if let Ok(exists) = fs::exists(path) {
+                            path
+                        } else {
+                            "404.html"
+                        }
+                    );
+                }
             }
+            "POST" => match req.path.as_str() {
+                "/cities/add" => {
+                    println!("cities add body");
+                    println!("{}", req.body);
+                },
+                _ => unreachable!()
+            }
+            _ => unreachable!()
         }
+
+    }
+
+    fn serve_files(&self, mut stream: TcpStream, file_paths: &[&str]) {
+        let full_text = file_paths
+            .iter()
+            .map(|p| fs::read_to_string(p).unwrap_or("".to_string()))
+            .collect::<Vec<String>>()
+            .join("");
+        self.serve_bytes(stream, mime_guess::mime::TEXT_HTML, full_text.as_bytes());
     }
 
     fn serve_file(&self, mut stream: TcpStream, file_path: &str) {
@@ -95,14 +95,6 @@ impl Server {
         } else {
             eprintln!("{file_path} does not exist!");
         }
-    }
-
-    fn serve_html(&self, mut stream: TcpStream, html: String) {
-        self.serve_bytes(
-            stream,
-            mime_guess::mime::TEXT_HTML,
-            html.as_bytes()
-        );
     }
 
     fn serve_bytes(
