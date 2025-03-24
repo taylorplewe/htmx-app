@@ -1,4 +1,12 @@
-<dialog popover id="new-city-dialog">
+<dialog
+  id="new-city-dialog"
+  popover
+  hx-get="/cities/select/get"
+  hx-swap="innerHTML"
+  hx-trigger="toggle"
+  hx-vals="{}"
+  hx-target="#city-sister-city"
+>
   <h2>Add a city</h2>
   <form hx-post="/cities/add" hx-swap="innerHTML" hx-target="#cities-list">
     <label for="city-name">Name</label>
@@ -11,18 +19,7 @@
     <input id="city-country" name="country" type="text">
 
     <label for="city-sister-city">Sister City</label>
-    <select
-            id="city-sister-city"
-            name="sister_city_id"
-            hx-get="/cities/select/get"
-            hx-swap="innerHTML"
-            hx-trigger="focus"
-            hx-vals="{}"
-            hx-target="this"
-    ></select>
-
-<!--    <label for="city-sister-city-id">Sister City</label>-->
-<!--    <input id="city-sister-city-id" name="sister_city_id" type="number">-->
+    <select id="city-sister-city" name="sister_city_id"></select>
 
     <button type="submit" popovertarget="new-city-dialog">Add</button>
   </form>

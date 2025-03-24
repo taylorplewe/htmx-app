@@ -39,7 +39,7 @@ impl Server {
         }
     }
 
-    fn handle_connection(&mut self, mut stream: TcpStream) {
+    fn handle_connection(&mut self, stream: TcpStream) {
         let req = if let Some(req) = Request::from_stream(&stream) { req } else { return; };
 
         match req.method.as_str() {
@@ -51,7 +51,7 @@ impl Server {
                     let path = &req.path[1..];
                     self.serve_file(
                         stream,
-                        if let Ok(exists) = fs::exists(path) {
+                        if let Ok(_exists) = fs::exists(path) {
                             path
                         } else {
                             "404.html"
@@ -69,7 +69,7 @@ impl Server {
 
     }
 
-    fn serve_files_combined(&self, mut stream: TcpStream, file_paths: &[&str]) {
+    fn serve_files_combined(&self, stream: TcpStream, file_paths: &[&str]) {
         let full_text = file_paths
             .iter()
             .map(|p| fs::read_to_string(p).unwrap_or("".to_string()))
@@ -78,7 +78,7 @@ impl Server {
         self.serve_bytes(stream, mime_guess::mime::TEXT_HTML, full_text.as_bytes());
     }
 
-    fn serve_file(&self, mut stream: TcpStream, file_path: &str) {
+    fn serve_file(&self, stream: TcpStream, file_path: &str) {
         let mime = mime_guess::from_path(file_path).first();
         if mime.is_none() {
             eprintln!("could not get the MIME type for the file at {file_path}");
@@ -113,18 +113,20 @@ impl Server {
         stream.shutdown(Shutdown::Write).unwrap();
     }
 
-    fn add_city(&mut self, mut stream: TcpStream, req: Request) {
+    fn add_city(&mut self, stream: TcpStream, req: Request) {
         // verify the request contains all the necessary fields
-        if !["name", "state", "country"].iter().all(|key| req.params.contains_key(&key.to_string())) {
+        if !["name", "state", "country", "sister_city_id"].iter().all(|key| req.params.contains_key(&key.to_string())) {
             eprintln!("Request does not contain all the keys necessary for a city");
             return;
         }
 
         // if the sister city already has its own sister city, break that connection
-        let mut sister_city_id: Option<u32> = None;
-        if let Some(sister_city_id_str) = req.params.get("sister_city_id") {
-            sister_city_id = Some(u32::from_str(sister_city_id_str).expect("sister_city_id must be a number"));
-
+        let mut sister_city_id: Option<u32>;
+        let sister_city_id_str = req.params.get("sister_city_id").unwrap();
+        sister_city_id = Some(u32::from_str(sister_city_id_str).expect("sister_city_id must be a number"));
+        if sister_city_id == Some(0) {
+            sister_city_id = None
+        } else {
             if let Some(third_city) = self.cities.get(&sister_city_id.unwrap())
                 .and_then(|sister_city| sister_city.sister_city_id)
                 .and_then(|id| self.cities.get_mut(&id))
@@ -150,14 +152,14 @@ impl Server {
         self.send_cities_list_html(stream);
     }
 
-    fn remove_city(&mut self, mut stream: TcpStream, req: Request) {
+    fn remove_city(&mut self, stream: TcpStream, req: Request) {
         let city_id_str = req.params.get("id").expect("Must send a city's ID to remove");
         let city_id = u32::from_str(city_id_str).expect("City ID must be a number");
 
         // if that city had a sister city, break that connection
         let city = self.cities.get(&city_id).unwrap();
         if let Some(sister_city_id) = city.sister_city_id {
-            let mut sister_city = self.cities.get_mut(&sister_city_id).unwrap();
+            let sister_city = self.cities.get_mut(&sister_city_id).unwrap();
             sister_city.sister_city_id = None;
         }
 
@@ -211,9 +213,10 @@ impl Server {
         stream.shutdown(Shutdown::Write).unwrap();
     }
 
-    fn send_cities_select_html(&mut self, mut stream: TcpStream) {
+    fn send_cities_select_html(&mut self, stream: TcpStream) {
         let cities_select_html = self.cities.values()
             .map(|city| format!(r#"<option value={}>{}, {} {}</option>"#, city.id, city.name, city.state, city.country))
+            .chain(std::iter::once(String::from("<option value='0'>N/A</option>")))
             .collect::<Vec<String>>()
             .join("\n");
 

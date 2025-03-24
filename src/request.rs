@@ -1,7 +1,7 @@
 use std::collections::HashMap;
-use std::io::{BufRead, BufReader, Read};
 use std::net::TcpStream;
 
+#[allow(dead_code)] // headers and body are not being used yet
 pub struct Request {
     pub method: String,
     pub path: String,
@@ -10,7 +10,7 @@ pub struct Request {
     pub params: HashMap<String, String>,
 }
 impl Request {
-    pub fn from_stream(mut stream: &TcpStream) -> Option<Self> {
+    pub fn from_stream(stream: &TcpStream) -> Option<Self> {
         let mut buf: [u8; u16::MAX as usize] = [0; u16::MAX as usize];
         let num_bytes_peeked = stream.peek(&mut buf).expect("Could not peek the request buffer");
         let req_text = String::from_utf8(buf[..num_bytes_peeked].to_vec()).expect("Could not convert utf8 block to String");
