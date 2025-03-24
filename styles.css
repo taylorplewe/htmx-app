@@ -104,6 +104,18 @@ form {
     }
 }
 
+li {
+    margin-bottom: 8px;
+    &:last-child {
+        margin-bottom: 0;
+    }
+}
+
+a.remove-city {
+    color: firebrick;
+    cursor: pointer;
+}
+
 @media (prefers-color-scheme: light) {
     :root {
         background-color: var(--col-light-bg);

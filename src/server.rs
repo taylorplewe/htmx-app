@@ -60,9 +60,8 @@ impl Server {
                 }
             }
             "POST" => match req.path.as_str() {
-                "/cities/add" => {
-                    self.add_city(stream, req);
-                },
+                "/cities/add" => self.add_city(stream, req),
+                "/cities/remove" => self.remove_city(stream, req),
                 _ => unreachable!()
             }
             _ => unreachable!()
@@ -151,23 +150,51 @@ impl Server {
         self.send_cities_list_html(stream);
     }
 
+    fn remove_city(&mut self, mut stream: TcpStream, req: Request) {
+        let city_id_str = req.params.get("id").expect("Must send a city's ID to remove");
+        let city_id = u32::from_str(city_id_str).expect("City ID must be a number");
+
+        // if that city had a sister city, break that connection
+        let city = self.cities.get(&city_id).unwrap();
+        if let Some(sister_city_id) = city.sister_city_id {
+            let mut sister_city = self.cities.get_mut(&sister_city_id).unwrap();
+            sister_city.sister_city_id = None;
+        }
+
+        self.cities.remove(&city_id);
+
+        // response
+        self.send_cities_list_html(stream);
+    }
+
     fn send_cities_list_html(&mut self, mut stream: TcpStream) {
         let cities_list_html = self.cities.values()
             .map(|city| format!(
-                r#"
+                r##"
                     <li>
                         <p><strong><em>{}</em></strong></h3>
                         <p>{}, {}</p>
                         <p>sister city: {}</p>
+                        <a
+                            class="remove-city"
+                            hx-post="/cities/remove"
+                            hx-swap="innerHTML"
+                            hx-target="#cities-list"
+                            hx-vals='{{ "id": {} }}'
+                        >
+                            Remove
+                        </a>
                     </li>
-                "#,
+                "##,
                 city.name,
                 city.state, city.country,
                 if let Some(id) = city.sister_city_id {
-                    format!("{id}")
+                    let sister_city = self.cities.get(&id).expect("No city found with that ID");
+                    format!("{}, {} {}", sister_city.name, sister_city.state, sister_city.country)
                 } else {
                     String::from("N/A")
                 },
+                city.id,
             ))
             .collect::<Vec<String>>()
             .join("\n");
