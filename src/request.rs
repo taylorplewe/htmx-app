@@ -16,7 +16,7 @@ impl Request {
         let req_text = String::from_utf8(buf[..num_bytes_peeked].to_vec()).expect("Could not convert utf8 block to String");
 
         let mut req_text_lines = req_text.lines();
-        let mut req_info_split = req_text_lines.next()?.split(' ');
+        let mut req_info_split = req_text_lines.next()?.split('?').next()?.split(' ');
         let method = req_info_split.next()?.to_string();
         let path = req_info_split.next()?.to_string();
 

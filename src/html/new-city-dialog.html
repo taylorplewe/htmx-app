@@ -10,8 +10,19 @@
     <label for="city-country">Country</label>
     <input id="city-country" name="country" type="text">
 
-    <label for="city-sister-city-id">Sister City</label>
-    <input id="city-sister-city-id" name="sister_city_id" type="number">
+    <label for="city-sister-city">Sister City</label>
+    <select
+            id="city-sister-city"
+            name="sister_city_id"
+            hx-get="/cities/select/get"
+            hx-swap="innerHTML"
+            hx-trigger="focus"
+            hx-values="{}"
+            hx-target="this"
+    ></select>
+
+<!--    <label for="city-sister-city-id">Sister City</label>-->
+<!--    <input id="city-sister-city-id" name="sister_city_id" type="number">-->
 
     <button type="submit" popovertarget="new-city-dialog">Add</button>
   </form>

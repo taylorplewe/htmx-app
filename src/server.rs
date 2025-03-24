@@ -46,6 +46,7 @@ impl Server {
             "GET" => match req.path.as_str() {
                 "/" => self.serve_file(stream, "index.html"),
                 "/enter" => self.serve_files_combined(stream, &["src/html/main-card.html", "src/html/new-city-dialog.html"]),
+                "/cities/select/get" => self.send_cities_select_html(stream),
                 _ => {
                     let path = &req.path[1..];
                     self.serve_file(
@@ -115,24 +116,26 @@ impl Server {
 
     fn add_city(&mut self, mut stream: TcpStream, req: Request) {
         // verify the request contains all the necessary fields
-        if !["name", "state", "country", "sister_city_id"].iter().all(|key| req.params.contains_key(&key.to_string())) {
+        if !["name", "state", "country"].iter().all(|key| req.params.contains_key(&key.to_string())) {
             eprintln!("Request does not contain all the keys necessary for a city");
             return;
         }
 
         // if the sister city already has its own sister city, break that connection
-        let sister_city_id_str = req.params.get("sister_city_id").unwrap();
-        let sister_city_id = u32::from_str(sister_city_id_str).expect("sister_city_id must be a number");
+        let mut sister_city_id: Option<u32> = None;
+        if let Some(sister_city_id_str) = req.params.get("sister_city_id") {
+            sister_city_id = Some(u32::from_str(sister_city_id_str).expect("sister_city_id must be a number"));
 
-        if let Some(third_city) = self.cities.get(&sister_city_id)
-            .and_then(|sister_city| sister_city.sister_city_id)
-            .and_then(|id| self.cities.get_mut(&id))
-        {
-            third_city.sister_city_id = None;
-        }
+            if let Some(third_city) = self.cities.get(&sister_city_id.unwrap())
+                .and_then(|sister_city| sister_city.sister_city_id)
+                .and_then(|id| self.cities.get_mut(&id))
+            {
+                third_city.sister_city_id = None;
+            }
 
-        if let Some(sister_city) = self.cities.get_mut(&sister_city_id) {
-            sister_city.sister_city_id = Some(sister_city_id);
+            if let Some(sister_city) = self.cities.get_mut(&sister_city_id.unwrap()) {
+                sister_city.sister_city_id = Some(self.current_city_id);
+            }
         }
 
         self.cities.insert(self.current_city_id, City {
@@ -140,7 +143,7 @@ impl Server {
             name: req.params.get("name").unwrap().into(),
             state: req.params.get("state").unwrap().into(),
             country: req.params.get("country").unwrap().into(),
-            sister_city_id: Some(sister_city_id),
+            sister_city_id,
         });
         self.current_city_id += 1;
 
@@ -155,13 +158,22 @@ impl Server {
             cities_list_html = String::from("<li><em>No cities entered yet!</em></li>");
         }
         self.cities.values().for_each(|city| {
-            cities_list_html.push_str(format!(r#"
-                <li>
-                    <p><strong><em>{}</em></strong></h3>
-                    <p>{}, {}</p>
-                    <p>sister city: {:#}</p>
-                </li>
-            "#, city.name, city.state, city.country, city.sister_city_id.unwrap()).as_str());
+            cities_list_html.push_str(format!(
+                r#"
+                    <li>
+                        <p><strong><em>{}</em></strong></h3>
+                        <p>{}, {}</p>
+                        <p>sister city: {}</p>
+                    </li>
+                "#,
+                city.name,
+                city.state, city.country,
+                if let Some(id) = city.sister_city_id {
+                    format!("{id}")
+                } else {
+                    String::from("N/A")
+                },
+            ).as_str());
         });
 
         stream.send_res(Response {
@@ -174,5 +186,15 @@ impl Server {
         });
         stream.flush().unwrap();
         stream.shutdown(Shutdown::Write).unwrap();
+    }
+
+    fn send_cities_select_html(&mut self, mut stream: TcpStream) {
+        let mut cities_select_html = String::from("");
+
+        self.cities.values().for_each(|city| {
+            cities_select_html.push_str(format!(r#"<option value={}>{}, {} {}</option>"#, city.id, city.name, city.state, city.country).as_str());
+        });
+
+        self.serve_bytes(stream, mime_guess::mime::TEXT_HTML, cities_select_html.as_bytes());
     }
 }

@@ -46,7 +46,7 @@ main {
     margin: 0 auto;
 }
 
-button, input {
+button, input, select {
     background-color: var(--col-dark-input-bg);
     color: var(--col-dark-input-text);
     border: none;
@@ -85,13 +85,13 @@ code {
     color: var(--col-code);
 }
 
-input {
-    border: none;
-
+input, select {
+    box-sizing: border-box;
+    min-width: 300px;
 }
 
 form {
-    input {
+    > :is(input, select) {
         display: block;
         margin-bottom: 16px;
         &:last-child {
@@ -126,5 +126,11 @@ form {
 @starting-style {
     dialog {
         opacity: 0;
+    }
+}
+
+@media screen and (max-width: 700px) {
+    input {
+        width: 100%;
     }
 }
