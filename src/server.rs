@@ -151,16 +151,9 @@ impl Server {
         self.send_cities_list_html(stream);
     }
 
-    // TODO: see comment on send_cities_select_html()
     fn send_cities_list_html(&mut self, mut stream: TcpStream) {
-        let mut cities_list_html = String::from("");
-
-        if self.cities.len() == 0 {
-            cities_list_html = String::from("<li><em>No cities entered yet!</em></li>");
-        }
-        // TODO: get sister city name
-        self.cities.values().for_each(|city| {
-            cities_list_html.push_str(format!(
+        let cities_list_html = self.cities.values()
+            .map(|city| format!(
                 r#"
                     <li>
                         <p><strong><em>{}</em></strong></h3>
@@ -175,8 +168,9 @@ impl Server {
                 } else {
                     String::from("N/A")
                 },
-            ).as_str());
-        });
+            ))
+            .collect::<Vec<String>>()
+            .join("\n");
 
         stream.send_res(Response {
             status_code: 200,
@@ -190,13 +184,11 @@ impl Server {
         stream.shutdown(Shutdown::Write).unwrap();
     }
 
-    // TODO: can remove the 'mut', make it one single functional assignment
     fn send_cities_select_html(&mut self, mut stream: TcpStream) {
-        let mut cities_select_html = String::from("");
-
-        self.cities.values().for_each(|city| {
-            cities_select_html.push_str(format!(r#"<option value={}>{}, {} {}</option>"#, city.id, city.name, city.state, city.country).as_str());
-        });
+        let cities_select_html = self.cities.values()
+            .map(|city| format!(r#"<option value={}>{}, {} {}</option>"#, city.id, city.name, city.state, city.country))
+            .collect::<Vec<String>>()
+            .join("\n");
 
         self.serve_bytes(stream, mime_guess::mime::TEXT_HTML, cities_select_html.as_bytes());
     }
