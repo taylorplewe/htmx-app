@@ -12,8 +12,8 @@ pub struct Request {
 impl Request {
     pub fn from_stream(mut stream: &TcpStream) -> Option<Self> {
         let mut buf: [u8; u16::MAX as usize] = [0; u16::MAX as usize];
-        let _num_bytes_peeked = stream.peek(&mut buf).expect("Could not peek the request buffer");
-        let req_text = String::from_utf8(buf.to_vec()).expect("Could not convert utf8 block to String");
+        let num_bytes_peeked = stream.peek(&mut buf).expect("Could not peek the request buffer");
+        let req_text = String::from_utf8(buf[..num_bytes_peeked].to_vec()).expect("Could not convert utf8 block to String");
 
         let mut req_text_lines = req_text.lines();
         let mut req_info_split = req_text_lines.next()?.split(' ');

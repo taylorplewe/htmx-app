@@ -28,7 +28,7 @@ impl Server {
     pub fn new() -> Self {
         Self { cities: HashMap::new(), current_city_id: 1 }
     }
-    pub fn serve(&self) {
+    pub fn serve(&mut self) {
         let listening_url = "127.0.0.1:7878";
         let listener = TcpListener::bind(listening_url).unwrap();
         println!("Listening on {listening_url}");
@@ -39,7 +39,7 @@ impl Server {
         }
     }
 
-    fn handle_connection(&self, mut stream: TcpStream) {
+    fn handle_connection(&mut self, mut stream: TcpStream) {
         let req = if let Some(req) = Request::from_stream(&stream) { req } else { return; };
 
         match req.method.as_str() {
@@ -60,8 +60,7 @@ impl Server {
             }
             "POST" => match req.path.as_str() {
                 "/cities/add" => {
-                    println!("cities add body");
-                    println!("{}", req.body);
+                    self.add_city(stream, req);
                 },
                 _ => unreachable!()
             }
@@ -114,21 +113,27 @@ impl Server {
         stream.shutdown(Shutdown::Write).unwrap();
     }
 
-    fn add_city(&mut self, req: Request) {
+    fn add_city(&mut self, mut stream: TcpStream, req: Request) {
         // verify the request contains all the necessary fields
-        if !["name", "state", "country", "sister_city_id"].iter().all(|key| req.params.contains_key(key)) {
+        if !["name", "state", "country", "sister_city_id"].iter().all(|key| req.params.contains_key(&key.to_string())) {
             eprintln!("Request does not contain all the keys necessary for a city");
             return;
         }
 
         // if the sister city already has its own sister city, break that connection
-        let sister_city_id = u32::from_str(req.params.get("sister_city_id").unwrap()).expect("sister_city_id must be a number");
-        let mut sister_city = self.cities.get_mut(&sister_city_id).expect("no sister city found with that id");
-        if let Some(third_city_id) = &sister_city.sister_city_id {
-            let mut third_city = self.cities.get_mut(third_city_id).expect("no third city found with that id");
+        let sister_city_id_str = req.params.get("sister_city_id").unwrap();
+        let sister_city_id = u32::from_str(sister_city_id_str).expect("sister_city_id must be a number");
+
+        if let Some(third_city) = self.cities.get(&sister_city_id)
+            .and_then(|sister_city| sister_city.sister_city_id)
+            .and_then(|id| self.cities.get_mut(&id))
+        {
             third_city.sister_city_id = None;
         }
-        sister_city.sister_city_id = Some(self.current_city_id);
+
+        if let Some(sister_city) = self.cities.get_mut(&sister_city_id) {
+            sister_city.sister_city_id = Some(sister_city_id);
+        }
 
         self.cities.insert(self.current_city_id, City {
             id: self.current_city_id,
@@ -138,5 +143,36 @@ impl Server {
             sister_city_id: Some(sister_city_id),
         });
         self.current_city_id += 1;
+
+        // response
+        self.send_cities_list_html(stream);
+    }
+
+    fn send_cities_list_html(&mut self, mut stream: TcpStream) {
+        let mut cities_list_html = String::from("");
+
+        if self.cities.len() == 0 {
+            cities_list_html = String::from("<li><em>No cities entered yet!</em></li>");
+        }
+        self.cities.values().for_each(|city| {
+            cities_list_html.push_str(format!(r#"
+                <li>
+                    <p><strong><em>{}</em></strong></h3>
+                    <p>{}, {}</p>
+                    <p>sister city: {:#}</p>
+                </li>
+            "#, city.name, city.state, city.country, city.sister_city_id.unwrap()).as_str());
+        });
+
+        stream.send_res(Response {
+            status_code: 200,
+            headers: vec![
+                (String::from("Content-Length"), format!("{}", cities_list_html.len())),
+                (String::from("Content-Type"), mime_guess::mime::TEXT_HTML.to_string()),
+            ],
+            body: cities_list_html.as_bytes().to_vec(),
+        });
+        stream.flush().unwrap();
+        stream.shutdown(Shutdown::Write).unwrap();
     }
 }
