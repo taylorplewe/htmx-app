@@ -151,12 +151,14 @@ impl Server {
         self.send_cities_list_html(stream);
     }
 
+    // TODO: see comment on send_cities_select_html()
     fn send_cities_list_html(&mut self, mut stream: TcpStream) {
         let mut cities_list_html = String::from("");
 
         if self.cities.len() == 0 {
             cities_list_html = String::from("<li><em>No cities entered yet!</em></li>");
         }
+        // TODO: get sister city name
         self.cities.values().for_each(|city| {
             cities_list_html.push_str(format!(
                 r#"
@@ -188,6 +190,7 @@ impl Server {
         stream.shutdown(Shutdown::Write).unwrap();
     }
 
+    // TODO: can remove the 'mut', make it one single functional assignment
     fn send_cities_select_html(&mut self, mut stream: TcpStream) {
         let mut cities_select_html = String::from("");
 
