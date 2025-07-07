@@ -8,4 +8,5 @@ https://github.com/user-attachments/assets/73eeedb2-0410-4a29-bdcd-4240fba2c7d3
 git clone "https://github.com/taylorplewe/htmx-app.git"
 cd htmx-app
 cargo run
+# go to localhost:7878 in your browser
 ```
